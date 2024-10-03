@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Docker Container Manager</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <script
+      src="https://kit.fontawesome.com/a076d05399.js"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <!-- Navbar -->
+    <nav class="bg-blue-600 p-4">
+      <div class="container mx-auto">
+        <h1 class="text-white text-2xl font-bold">Docker Container Manager</h1>
+      </div>
+    </nav>
+
+    <div class="container mx-auto mt-8">
+      <h2 class="text-xl font-bold mb-4">Available Containers</h2>
+
+      <table class="table-auto w-full bg-white shadow-lg rounded-lg">
+        <thead class="bg-blue-600 text-white">
+          <tr>
+            <th class="px-4 py-2">ID</th>
+            <th class="px-4 py-2">Name</th>
+            <th class="px-4 py-2">Image</th>
+            <th class="px-4 py-2">State</th>
+            <th class="px-4 py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="container-list" class="text-center">
+          <!-- Containers will be listed here -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Modal for Logs -->
+    <div id="logs-modal" class="fixed z-10 inset-0 overflow-y-auto hidden">
+      <div class="flex items-center justify-center min-h-screen">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg">
+          <h2 class="text-2xl font-bold mb-4">Container Logs</h2>
+          <pre
+            id="container-logs"
+            class="bg-gray-100 p-4 rounded-lg max-h-80 overflow-y-scroll"
+          ></pre>
+          <button
+            onclick="closeModal()"
+            class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Fetch and display container list
+      async function fetchContainers() {
+        const response = await fetch('/containers');
+        const containers = await response.json();
+
+        const containerList = document.getElementById('container-list');
+        containerList.innerHTML = ''; // Clear the list
+
+        containers.forEach((container) => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="px-4 py-2">${container.ID}</td>
+            <td class="px-4 py-2">${container.Names}</td>
+            <td class="px-4 py-2">${container.Image}</td>
+            <td class="px-4 py-2">${container.State}</td>
+            <td class="px-4 py-2">
+              <button class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg mr-2" onclick="viewLogs('${container.ID}')">
+                <i class="fas fa-eye"></i> Logs
+              </button>
+            </td>
+          `;
+          containerList.appendChild(row);
+        });
+      }
+
+      // View logs for a container
+      async function viewLogs(containerID) {
+        const response = await fetch(`/container-logs?id=${containerID}`);
+        const logs = await response.text();
+
+        document.getElementById('container-logs').textContent = logs;
+        document.getElementById('logs-modal').classList.remove('hidden');
+      }
+
+      // Close logs modal
+      function closeModal() {
+        document.getElementById('logs-modal').classList.add('hidden');
+      }
+
+      // Load containers on page load
+      window.onload = fetchContainers;
+    </script>
+  </body>
+</html>
