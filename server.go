@@ -1,68 +1,57 @@
 package main
 
 import (
-	"context"
+	"dockermanager/dockerutils"
 	"encoding/json"
 	"log"
 	"net/http"
-
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 )
 
-type ContainerInfo struct {
-	ID    string `json:"id"`
-	Names string `json:"names"`
-	Image string `json:"image"`
-	State string `json:"state"`
+func handleListContainers(w http.ResponseWriter, r *http.Request) {
+	containers, err := dockerutils.ListContainers()
+	if err != nil {
+		http.Error(w, "Error fetching containers", http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(containers)
+}
+
+func handleStartContainer(w http.ResponseWriter, r *http.Request) {
+	containerID := r.URL.Query().Get("id")
+	if containerID == "" {
+		http.Error(w, "Missing container ID", http.StatusBadRequest)
+		return
+	}
+
+	err := dockerutils.StartContainer(containerID)
+	if err != nil {
+		http.Error(w, "Error starting container", http.StatusInternalServerError)
+		return
+	}
+
+	w.Write([]byte("Container started successfully"))
+}
+
+func handleStopContainer(w http.ResponseWriter, r *http.Request) {
+	containerID := r.URL.Query().Get("id")
+	if containerID == "" {
+		http.Error(w, "Missing container ID", http.StatusBadRequest)
+		return
+	}
+
+	err := dockerutils.StopContainer(containerID)
+	if err != nil {
+		http.Error(w, "Error stopping container", http.StatusInternalServerError)
+		return
+	}
+
+	w.Write([]byte("Container stopped successfully"))
 }
 
 func main() {
-	// Create Docker client
-	cli, err := client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		log.Fatalf("Error creating Docker client: %v", err)
-	}
-
-	// Endpoint to fetch container list
-	http.HandleFunc("/containers", func(w http.ResponseWriter, r *http.Request) {
-		containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{})
-		if err != nil {
-			http.Error(w, "Error fetching containers", http.StatusInternalServerError)
-			return
-		}
-
-		containerInfos := []ContainerInfo{}
-		for _, container := range containers {
-			containerInfos = append(containerInfos, ContainerInfo{
-				ID:    container.ID,
-				Names: container.Names[0],
-				Image: container.Image,
-				State: container.State,
-			})
-		}
-
-		json.NewEncoder(w).Encode(containerInfos)
-	})
-
-	// Endpoint to fetch container logs
-	http.HandleFunc("/container-logs", func(w http.ResponseWriter, r *http.Request) {
-		containerID := r.URL.Query().Get("id")
-		if containerID == "" {
-			http.Error(w, "Missing container ID", http.StatusBadRequest)
-			return
-		}
-
-		options := types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true}
-		logs, err := cli.ContainerLogs(context.Background(), containerID, options)
-		if err != nil {
-			http.Error(w, "Error fetching logs", http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/plain")
-		_, _ = w.ReadFrom(logs)
-	})
+	http.HandleFunc("/api/containers", handleListContainers)
+	http.HandleFunc("/api/start", handleStartContainer)
+	http.HandleFunc("/api/stop", handleStopContainer)
 
 	log.Println("Server started on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))

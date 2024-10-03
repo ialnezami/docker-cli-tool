@@ -14,6 +14,76 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func listContainers() {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+
+	containers, err := cli.ContainerList(context.Background(), types.ContainerListOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	for _, container := range containers {
+		fmt.Printf("ID: %s | Image: %s | State: %s\n", container.ID[:10], container.Image, container.State)
+	}
+}
+
+var listCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all Docker containers",
+	Run: func(cmd *cobra.Command, args []string) {
+		listContainers()
+	},
+}
+
+func startContainer(containerID string) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+
+	err = cli.ContainerStart(context.Background(), containerID, types.ContainerStartOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Container %s started\n", containerID)
+}
+
+var startCmd = &cobra.Command{
+	Use:   "start [container_id]",
+	Short: "Start a Docker container",
+	Args:  cobra.MinimumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		startContainer(args[0])
+	},
+}
+
+func stopContainer(containerID string) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+
+	err = cli.ContainerStop(context.Background(), containerID, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Container %s stopped\n", containerID)
+}
+
+var stopCmd = &cobra.Command{
+	Use:   "stop [container_id]",
+	Short: "Stop a Docker container",
+	Args:  cobra.MinimumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		stopContainer(args[0])
+	},
+}
+
 func monitorContainerStats(containerID string) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
